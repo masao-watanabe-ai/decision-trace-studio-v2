@@ -47,6 +47,105 @@ AI はシグナルを出す存在です。でも現場では、そのシグナ�
 
 シミュレーション結果を分析し、境界追加・条件分割・優先度調整などの改善提案を自動生成します。提案内容を確認して承認すると、フローにそのまま反映されます。その後 Simulate → Compare で改善効果を数値で確認できます。
 
+### Interact — 現場の文脈からフローを改善する
+
+interaction-core を **Decision Operation Interface** として統合した実験的なタブです。チャンネルに蓄積されたメッセージや分析結果をシグナルとして扱い、そこから構造化された仮説を生成してフロー改善につなげます。
+
+---
+
+## Interact タブ — interaction-core 統合（実験的）
+
+> このタブは interaction-core バックエンドが別途起動している場合にのみ機能します。
+
+### 概念
+
+AI はシグナルを出す存在です。シグナルはまだ意思決定ではありません。Interact タブは、現場のやり取り（チャンネルのメッセージ・分析結果）をシグナルとして受け取り、オペレーターが「意味」を付与して Decision Proposal へと変換するインターフェースです。
+
+```
+Interaction（メッセージ・分析）
+  → Signal（観測された事実の選択）
+  → Meaning（IF / THEN / BECAUSE 仮説の生成）
+  → Decision Proposal（Improve タブへ送信）
+  → Flow への反映
+  → Simulate → Compare（変更インパクトの確認）
+```
+
+### 操作の流れ
+
+1. **チャンネルを選択する** — 左ペインのリストから対象チャンネルを選ぶ
+2. **Analyze を実行する** — Signal Panel の「Analyze」ボタンを押してチャンネルを分析する
+3. **シグナルを選択する** — 分析結果から関連するシグナルにチェックを入れる
+4. **仮説を生成する** — 「Generate Decision Hypothesis」を押す。選択したシグナルをもとに以下の構造で仮説が生成される：
+
+   ```
+   IF       <観測された条件>
+   THEN     <フローへの調整案>
+   BECAUSE  <根拠>
+   ```
+
+   生成された内容は編集可能です。
+
+5. **Decision Proposal を作成する** — 「Create Decision Proposal」を押す。仮説が Improve タブの DecisionContext として保存される。
+6. **Improve タブで反映する** — Improve タブを開き、受け取った Context を確認する。「Convert to Decision Node」でノード提案に変換するか、「Generate Suggestion from Context」でルール改善提案を生成する。
+7. **Simulate → Compare で確認する** — ノード追加後にバナーが表示されるので「Go to Simulate →」から再実行し、「Go to Compare →」で変更前後の差分を確認する。
+
+### Signal と Decision の分離
+
+| 概念 | 担当 | 説明 |
+|---|---|---|
+| Signal | interaction-core | 観測された事実（キーワード、洞察、スコア）|
+| Meaning | オペレーター | IF/THEN/BECAUSE 仮説としての解釈 |
+| Decision Proposal | Improve タブ | フロー変更の提案（承認前） |
+| Decision | Studio フロー | 承認されてフローに反映された判断ロジック |
+
+AI の出力（シグナル）をそのまま Decision に昇格させるのではなく、人間の解釈を挟む構造になっています。
+
+---
+
+## Run Decision Operation（実験的）
+
+> この機能は Evolution Phase として追加された実験的な拡張です。通常の Interact → Improve ワークフローに加えて、より直接的な操作経路を提供します。
+
+### 概念
+
+通常のフローは「仮説を作成 → Improve タブで承認 → Simulate → Compare」という複数ステップを経ます。Run Decision Operation は、この一連の操作を**単一のアクションに統合した省略経路**です。
+
+```
+Interaction（メッセージ・分析）
+  → Signal（観測された事実の選択）
+  → Meaning（IF / THEN / BECAUSE 仮説の生成）
+  → Decision Operation（ノード作成・反映・シミュレーションを一括実行）
+  → Flow への反映（Auto Apply）
+  → Simulate（Auto Simulation）
+  → Compare（変更インパクトの確認）
+```
+
+人間の解釈（仮説の確認・編集）は維持されます。自動化されるのは、確認済みの仮説を Flow に反映する**操作手順**の部分です。
+
+### オプション
+
+| オプション | デフォルト | 説明 |
+|---|---|---|
+| Auto Apply | OFF | 仮説から生成した Suggestion を確認なしでフローに即反映する |
+| Auto Simulation | OFF | Auto Apply 完了後、自動でシナリオ生成とシミュレーションを実行する |
+
+両オプションとも OFF の場合、通常の Suggestion として Improve タブに積まれ、従来どおり手動で承認できます。
+
+Auto Simulation は Auto Apply が ON のときのみ有効です。
+
+### 呼び出し元
+
+Run Decision Operation ボタンは2か所に配置されています：
+
+- **Interact タブ > Signal Panel > Section 5** — 仮説を生成した直後に実行できる
+- **Improve タブ > DecisionContext カード** — Improve タブに送信済みの Context から実行できる
+
+### 注意事項
+
+- この機能は**実験的**です。Auto Apply を ON にすると、確認ダイアログなしでフローが変更されます。
+- Auto Simulation を ON にすると、シミュレーション結果が上書きされます。以前の実行結果との比較が目的の場合は OFF のままにして、Simulate タブから手動で再実行してください。
+- フローへの反映は取り消せません（Undo は Design タブの保存操作のみ対応）。
+
 ---
 
 ## Call Center デモシナリオ
@@ -132,6 +231,34 @@ npm run dev
 docker compose up
 ```
 
+### interaction-core バックエンド（Interact タブを使う場合）
+
+Interact タブは [interaction-core](../chatPF/interaction-core) バックエンドへの接続を前提としています。Decision Trace Studio のバックエンドがポート 8000 を使用するため、interaction-core は **ポート 8001** で起動してください。
+
+```bash
+# interaction-core リポジトリで実行
+cd path/to/interaction-core/backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8001
+```
+
+フロントエンドの `.env.local` に接続先を指定します（初回セットアップ時に自動生成されます）：
+
+```
+VITE_INTERACTION_CORE_URL=http://localhost:8001
+```
+
+データベース（PostgreSQL）と Redis が必要です。interaction-core の `docker-compose.yml` を使うか、個別に起動してください：
+
+```bash
+# interaction-core ディレクトリで DB と Redis のみ起動
+docker compose up db redis
+```
+
+> interaction-core バックエンドが起動していない場合、Interact タブはチャンネル一覧の取得に失敗しますが、他のタブ（Design / Simulate / Compare / Improve）は影響を受けません。
+
 ---
 
 ## 技術スタック
@@ -143,3 +270,4 @@ docker compose up
 | 状態管理 | TanStack Query v5 + Zustand v5 |
 | バックエンド | FastAPI + Pydantic v2 |
 | データ永続化 | インメモリ（開発用） |
+| Interact レイヤー | interaction-core（FastAPI + PostgreSQL + Redis）— 別プロセス、実験的 |

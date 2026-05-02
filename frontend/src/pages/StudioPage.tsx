@@ -5,6 +5,7 @@ import { GuidedDemoPanel } from '../features/demo/GuidedDemoPanel'
 import { FlowCanvas } from '../features/flow-editor/FlowCanvas'
 import { NodeDetailPanel } from '../features/flow-editor/NodeDetailPanel'
 import { ImprovePanel } from '../features/improve/ImprovePanel'
+import { InteractionPanel } from '../features/interaction/InteractionPanel'
 import { ComparisonPanel } from '../features/simulation/ComparisonPanel'
 import { SimulationPanel } from '../features/simulation/SimulationPanel'
 import { useCurrentFlow, useUpdateFlow } from '../hooks/useFlow'
@@ -14,7 +15,7 @@ import { useStudioStore } from '../store/studioStore'
 
 // ─── Tab config ───────────────────────────────────────────────────────────────
 
-type Tab = 'flow' | 'simulate' | 'compare' | 'improve'
+type Tab = 'flow' | 'simulate' | 'compare' | 'improve' | 'interact'
 
 const TABS: { key: Tab; label: string; hint: string }[] = [
   {
@@ -36,6 +37,11 @@ const TABS: { key: Tab; label: string; hint: string }[] = [
     key: 'improve',
     label: 'Improve',
     hint: '改善提案を生成して Flow に反映',
+  },
+  {
+    key: 'interact',
+    label: 'Interact',
+    hint: 'Interaction Core — シグナル収集・仮説生成・Decision Proposal',
   },
 ]
 
@@ -228,7 +234,17 @@ export function StudioPage() {
 
       {activeTab === 'improve' && (
         <div className="flex-1 overflow-auto bg-white">
-          <ImprovePanel projectId={projectId} />
+          <ImprovePanel
+            projectId={projectId}
+            onGoToSimulate={() => setActiveTab('simulate')}
+            onGoToCompare={() => setActiveTab('compare')}
+          />
+        </div>
+      )}
+
+      {activeTab === 'interact' && (
+        <div className="flex-1 overflow-hidden">
+          <InteractionPanel projectId={projectId} />
         </div>
       )}
 

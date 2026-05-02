@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from app.repositories.flow_repository import FlowRepository
 from app.repositories.suggestion_repository import SuggestionRepository
 from app.repositories.trace_repository import TraceRepository
-from app.schemas.suggestion import Suggestion
+from app.schemas.suggestion import FromContextRequest, GenerateSuggestionsRequest, Suggestion
 from app.services.suggestion_service import SuggestionService
 
 router = APIRouter(tags=["suggestions"])
@@ -17,8 +17,24 @@ def _get_service() -> SuggestionService:
     response_model=list[Suggestion],
     status_code=201,
 )
-def generate_suggestions(project_id: str) -> list[Suggestion]:
-    return _get_service().generate(project_id)
+def generate_suggestions(
+    project_id: str,
+    body: GenerateSuggestionsRequest | None = None,
+) -> list[Suggestion]:
+    ctx = body.additional_context if body else None
+    return _get_service().generate(project_id, ctx)
+
+
+@router.post(
+    "/api/projects/{project_id}/suggestions/from-context",
+    response_model=Suggestion,
+    status_code=201,
+)
+def create_suggestion_from_context(
+    project_id: str,
+    body: FromContextRequest,
+) -> Suggestion:
+    return _get_service().from_context(project_id, body)
 
 
 @router.get(
