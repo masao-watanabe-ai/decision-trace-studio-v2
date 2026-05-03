@@ -271,3 +271,7 @@ docker compose up db redis
 | バックエンド | FastAPI + Pydantic v2 |
 | データ永続化 | インメモリ（開発用） |
 | Interact レイヤー | interaction-core（FastAPI + PostgreSQL + Redis）— 別プロセス、実験的 |
+
+## License
+
+MIT License © 2026 Masao Watanabe
